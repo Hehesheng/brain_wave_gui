@@ -1,0 +1,12 @@
+{
+	"folders": [
+		{
+			"path": "."
+		},
+	],
+    "settings": {
+        "zenMode.restore": true,
+		"zenMode.hideActivityBar": false,
+		"python.venvPath": "~\\env\\pyvenv",
+    }
+}
