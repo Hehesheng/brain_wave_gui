@@ -15,8 +15,6 @@ logging.basicConfig(level=logging.INFO,
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
-device_id = ["528233832", "541342082"]
-
 # headers = {
 #     "api-key": "k=0=wkvq=gqPAJL8apDMjU=8l8o=",
 # }
@@ -24,7 +22,7 @@ info = [{"id": "528233832", "head": {"api-key": "k=0=wkvq=gqPAJL8apDMjU=8l8o="}}
         {"id": "541342082", "head": {"api-key": "2g4FG7C=feNvz=pwhicfDz0m8OQ="}}]
 
 
-def get_onenet_stream(id, device=device_id[0]):
+def get_onenet_stream(id, device=info[0]["id"]):
     url = 'http://api.heclouds.com/devices/' + \
         device + '/datastreams/' + id
     for headers in info:
@@ -40,6 +38,8 @@ def get_current_value(res):
         return None
     return j["data"]["current_value"]
 
+def get_current_onenet(id, device=info[0]["id"]):
+    return get_current_value(get_onenet_stream(id, device))
 
 if __name__ == "__main__":
     datastream_id = 'data_pack'

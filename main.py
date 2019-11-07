@@ -12,10 +12,11 @@ from TgamPlot import MyPlot
 from Combobox import ComboBox
 import parameters
 import onenet
-from Figure_Canvas import Figure_Canvas
+from NormalView import NormalView
+from AdvanceView import AdvanceView
 # from NN import NN
 from PyQt5.QtWidgets import (QApplication, QCheckBox, QDesktopWidget,
-                             QGraphicsScene, QGridLayout,
+                             QGraphicsScene, QGridLayout, QRadioButton,
                              QGroupBox, QHBoxLayout, QLabel, QLineEdit,
                              QMainWindow, QMessageBox, QPushButton,
                              QTextEdit, QToolTip, QTabWidget,
@@ -36,10 +37,134 @@ logging.basicConfig(level=logging.INFO,
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
+
 # %%
+
+
+class ConfigTabsWidget(QTabWidget):
+    """docstring for ConfigTabsWidget."""
+
+    def __init__(self, parent=None):
+        super(ConfigTabsWidget, self).__init__()
+        self.parent = parent
+
+        self.setAutoFillBackground(True)
+        self.onenetTab = QWidget()
+        self.networkTab = QWidget()
+        self.emotionTab = QWidget()
+
+        self.addTab(self.onenetTab, "OneNET")
+        self.addTab(self.networkTab, "NetWork")
+        self.addTab(self.emotionTab, "Emotion")
+
+        self.initOnenetTab()
+        self.initOnenetTabEvents()
+
+        self.initNetworkTab()
+        self.initEmotionTab()
+
+        self.hide()
+
+    def initOnenetTab(self):
+        onenetTabLayout = QVBoxLayout()
+        self.onenetTab.setLayout(onenetTabLayout)
+
+        onenetConfigLayout = QGridLayout()
+        onenetGroupBox = QGroupBox(parameters.strOnenetGroupBox)
+        onenetGroupBox.setLayout(onenetConfigLayout)
+
+        onenetDeviceIdLabel = QLabel(parameters.strOneNETDeviceId)
+        self.onenetDeviceIdComboBox = ComboBox()
+        for info in onenet.info:
+            self.onenetDeviceIdComboBox.addItem(info["id"])
+        self.onenetStartButton = QPushButton(parameters.strStart)
+        self.onenetModeCheckBox = QCheckBox(parameters.strAdvance)
+
+        onenetConfigLayout.addWidget(onenetDeviceIdLabel, 0, 0)
+        onenetConfigLayout.addWidget(self.onenetDeviceIdComboBox, 0, 1, 1, 2)
+        onenetConfigLayout.addWidget(self.onenetModeCheckBox, 1, 0, 1, 3)
+        onenetConfigLayout.addWidget(self.onenetStartButton, 2, 0, 1, 3)
+
+        onenetTabLayout.addWidget(onenetGroupBox)
+        onenetTabLayout.addStretch(1)
+
+    def initOnenetTabEvents(self):
+        self.onenetStartButton.clicked.connect(
+            self.parent.onOnenetStartButtonPushed)
+
+    def initNetworkTab(self):
+        networkTabLayout = QVBoxLayout()
+        self.networkTab.setLayout(networkTabLayout)
+
+        networkConfigLayout = QGridLayout()
+        networkGroupBox = QGroupBox(parameters.strNetworkGroupBox)
+        networkGroupBox.setLayout(networkConfigLayout)
+
+        self.networkModeComboBox = ComboBox()
+        self.networkModeComboBox.addItem("TCP Server")
+        self.networkModeComboBox.addItem("UDP Server")
+        addressLabel = QLabel(parameters.strDefaultAddress)
+        self.networkAddressLineEdit = QLineEdit()
+        self.networkAddressLineEdit.setText(self.get_host_ip())
+        portLabel = QLabel(parameters.strPort)
+        self.networkPortLineEdit = QLineEdit()
+        self.networkPortLineEdit.setText(parameters.strDefaultPort)
+        self.networkStartButton = QPushButton(parameters.strStart)
+
+        networkConfigLayout.addWidget(self.networkModeComboBox, 0, 0, 1, 3)
+        networkConfigLayout.addWidget(addressLabel, 1, 0)
+        networkConfigLayout.addWidget(self.networkAddressLineEdit, 1, 1, 1, 2)
+        networkConfigLayout.addWidget(portLabel, 2, 0)
+        networkConfigLayout.addWidget(self.networkPortLineEdit, 2, 1, 1, 2)
+        networkConfigLayout.addWidget(self.networkStartButton, 3, 0, 1, 3)
+
+        networkTabLayout.addWidget(networkGroupBox)
+        networkTabLayout.addStretch(1)
+
+    def initEmotionTab(self):
+        emotionTabLayout = QVBoxLayout()
+        self.emotionTab.setLayout(emotionTabLayout)
+
+        emotionConfigLayout = QGridLayout()
+        emotionGroupBox = QGroupBox(parameters.strEmotionGroupBox)
+        emotionGroupBox.setLayout(emotionConfigLayout)
+
+        self.happyRadioButton = QRadioButton(parameters.strEmotionHappy)
+        self.sadRadioButton = QRadioButton(parameters.strEmotionSad)
+        self.angryRadioButton = QRadioButton(parameters.strEmotionAngry)
+        self.scareRadioButton = QRadioButton(parameters.strEmotionScare)
+
+        self.emotionStartButton = QPushButton(parameters.strStart)
+
+        emotionConfigLayout.addWidget(self.happyRadioButton, 0, 0)
+        emotionConfigLayout.addWidget(self.sadRadioButton, 0, 1)
+        emotionConfigLayout.addWidget(self.angryRadioButton, 1, 0)
+        emotionConfigLayout.addWidget(self.scareRadioButton, 1, 1)
+        emotionConfigLayout.addWidget(self.emotionStartButton, 2, 0, 1, 2)
+
+        emotionTabLayout.addWidget(emotionGroupBox)
+        emotionTabLayout.addStretch(1)
+
+    # get ip
+    def get_host_ip(self):
+        try:
+            s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            s.connect(('8.8.8.8', 80))
+            ip = s.getsockname()[0]
+        except Exception as e:
+            logger.warning(e)
+            ip = parameters.strDefaultAddress
+        finally:
+            s.close()
+
+        return ip
+
+# %%
+
+
 class MainWindow(QMainWindow):
     skin = 1
-    __isSettinsShow = False
+    __isConfigTabsShow = False
 
     def __init__(self, app):
         super().__init__()
@@ -70,10 +195,10 @@ class MainWindow(QMainWindow):
         self.mainLayout = QHBoxLayout()
         self.frameLayout.addLayout(self.menuBarLayout)
         self.frameLayout.addLayout(self.mainLayout)
-        self.frameLayout.addStretch()
+        # self.frameLayout.addStretch()
 
-        self.resize(800, 600)
-        self.MoveToCenter()
+        self.resize(1200, 600)
+        self.moveToCenter()
         self.setWindowTitle(parameters.strTitle)
 
         self.statusBarStauts = QLabel()
@@ -105,27 +230,33 @@ class MainWindow(QMainWindow):
         self.menuBarLayout.addWidget(self.skinButton)
         self.menuBarLayout.addStretch()
 
+    def onOnenetStartButtonPushed(self):
+        if self.configTabs.onenetModeCheckBox.isChecked() == True:
+            self.viewTabs.addTab(
+                AdvanceView(self), self.configTabs.onenetDeviceIdComboBox.currentText())
+        else:
+            self.viewTabs.addTab(
+                NormalView(self), self.configTabs.onenetDeviceIdComboBox.currentText())
+
+    def onCloseRequested(self, index):
+        self.viewTabs.removeTab(index)
+
     def initMainLayout(self):
-        self.initSettingsLayout()
-        self.mainLayout.addStretch(1)
+        self.configTabs = ConfigTabsWidget(self)
+        self.viewTabs = QTabWidget()
+        self.viewTabs.setTabsClosable(True)
+        self.viewTabs.tabCloseRequested.connect(self.onCloseRequested)
 
-    def initSettingsLayout(self):
-        self.settingsTabs = QTabWidget()
-        self.settingsTabs.setAutoFillBackground(True)
+        self.mainLayout.addWidget(self.configTabs, 1)
+        self.mainLayout.addWidget(self.viewTabs, 3)
+        self.mainLayout.addStretch()
 
-        self.onenetTab = QWidget()
-        self.networkTab = QWidget()
-        self.emotionTab = QWidget()
-
-        self.settingsTabs.addTab(self.onenetTab, "OneNET")
-        self.settingsTabs.addTab(self.networkTab, "NetWork")
-        self.settingsTabs.addTab(self.emotionTab, "Emotion")
-
-        self.mainLayout.addWidget(self.settingsTabs)
-        self.settingsTabs.hide()
-        # OneNET Layout
-        # NetWork Layout
-        # Emotion Layout
+    # move the app to center
+    def moveToCenter(self):
+        qr = self.frameGeometry()
+        cp = QDesktopWidget().availableGeometry().center()
+        qr.moveCenter(cp)
+        self.move(qr.topLeft())
 
     def initViewLayout(self):
         pass
@@ -138,12 +269,12 @@ class MainWindow(QMainWindow):
         self.settingsButton.clicked.connect(self.settingsButtonPush)
 
     def settingsButtonPush(self):
-        if self.__isSettinsShow == True:
-            self.__isSettinsShow = False
-            self.settingsTabs.hide()
+        if self.__isConfigTabsShow == True:
+            self.__isConfigTabsShow = False
+            self.configTabs.hide()
         else:
-            self.__isSettinsShow = True
-            self.settingsTabs.show()
+            self.__isConfigTabsShow = True
+            self.configTabs.show()
 
     def skinChange(self):
         if self.skin == 1:  # light
@@ -153,27 +284,6 @@ class MainWindow(QMainWindow):
             file = open(self.DataPath + '/assets/qss/style.qss', "r")
             self.skin = 1
         self.app.setStyleSheet(file.read().replace("$DataPath", self.DataPath))
-
-    # move the app to center
-    def MoveToCenter(self):
-        qr = self.frameGeometry()
-        cp = QDesktopWidget().availableGeometry().center()
-        qr.moveCenter(cp)
-        self.move(qr.topLeft())
-
-    # get ip
-    def get_host_ip(self):
-        try:
-            s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-            s.connect(('8.8.8.8', 80))
-            ip = s.getsockname()[0]
-        except Exception as e:
-            logger.warning(e)
-            ip = parameters.strSocketDefaultAddress
-        finally:
-            s.close()
-
-        return ip
 
     def closeEvent(self, event):
         reply = QMessageBox.question(self, 'Sure To Quit?',
