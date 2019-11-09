@@ -22,30 +22,43 @@ info = [{"id": "528233832", "head": {"api-key": "k=0=wkvq=gqPAJL8apDMjU=8l8o="}}
         {"id": "541342082", "head": {"api-key": "2g4FG7C=feNvz=pwhicfDz0m8OQ="}}]
 
 
-def get_onenet_stream(id, device=info[0]["id"]):
-    url = 'http://api.heclouds.com/devices/' + \
-        device + '/datastreams/' + id
-    for headers in info:
-        if headers["id"] == device:
-            res = requests.request("GET", url, headers=headers["head"], timeout=5)
-    return res.text
+class onenet(object):
+    def __init__(self, id, stream):
+        super().__init__()
+        self.id = id
+        self.stream = stream
 
-
-def get_current_value(res):
-    j = json.loads(res)
-    if j["errno"] != 0:
-        logger.debug(j["error"])
+    def get_onenet_stream(self):
+        url = 'http://api.heclouds.com/devices/' + \
+            self.id + '/datastreams/' + self.stream
+        for headers in info:
+            if headers["id"] == self.id:
+                res = requests.request(
+                    "GET", url, headers=headers["head"], timeout=5)
+                return res.text
         return None
-    return j["data"]["current_value"]
 
-def get_current_onenet(id, device=info[0]["id"]):
-    return get_current_value(get_onenet_stream(id, device))
+    def get_current_value(self, res):
+        j = json.loads(res)
+        if j["errno"] != 0:
+            logger.debug(j["error"])
+            return None
+        return j["data"]["current_value"]
+
+    def get_current_onenet(self):
+        try:
+            j = self.get_current_value(self.get_onenet_stream())
+            pack = json.loads(j)
+        except Exception as e:
+            print(e)
+            return None
+        return pack
+
 
 if __name__ == "__main__":
-    datastream_id = 'data_pack'
-    _res = get_onenet_stream(datastream_id)
+    datastream_id = 'tgam_pack'
+    dev_id = "528233832"
+    net = onenet(dev_id, datastream_id)
+    _res = net.get_current_onenet()
 
-    # print(_res.text)
-
-    j = json.loads(_res.text)
-    print(j['data']['current_value'])
+    print(_res)

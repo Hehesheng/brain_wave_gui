@@ -7,6 +7,8 @@ from sklearn.preprocessing import StandardScaler
 
 
 class NN(object):
+    __ready = False
+
     def __init__(self, trainx, trainy, testx, testy, normalizedata=True, weights_save_dir='./NN/emotion.h5'):
 
         self.trainx = trainx
@@ -22,6 +24,12 @@ class NN(object):
             self.scaler1 = self.scaler.fit(trainx)
             self.trainx = self.scaler1.transform(self.trainx)
             self.testx = self.scaler1.transform(self.testx)
+        self.initial_network()
+        self.model.load_weights(weights_save_dir)
+        self.__ready = True
+
+    def isReady(self):
+        return self.__ready
 
     # 不需要调用
     def initial_network(self):
@@ -77,6 +85,12 @@ class NN(object):
         else:
             return self.model.predict_classes(np.expand_dims(testx, 0))[0]
 
+    def predict_p(self, testx, weights_save_dir='./NN/emotion.h5'):
+        self.initial_network()
+        self.model.load_weights(weights_save_dir)
+        testx = self.scaler1.transform(testx)
+        return self.model.predict_proba(testx)[0]
+
 
 if __name__ == "__main__":
     # 必须导入，原始数据
@@ -97,5 +111,8 @@ if __name__ == "__main__":
     # model.finetune(newtestx, newtesty)
     # print(model.predict(newtestx))  # 预测结果
     print("res:", model.predict(newtestx))
+    for i in range(10):
+        newtestx = newtestx + i
+        print("res:", model.predict(newtestx))
 
     # print(confusion_matrix(newtesty, model.predict(newtestx)))  # 混淆矩阵

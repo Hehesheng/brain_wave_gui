@@ -8,16 +8,19 @@
 # ==============================
 
 from PyQt5.QtWidgets import (QGroupBox, QHBoxLayout, QLabel, QLineEdit,
-                             QMainWindow, QMessageBox, QPushButton,
+                             QMainWindow, QMessageBox, QPushButton, QProgressBar,
                              QRadioButton, QTextEdit, QToolTip, QGridLayout,
                              QVBoxLayout, QWidget, QGraphicsView, QGraphicsScene)
 from PyQt5.QtGui import QPixmap
+from PyQt5.QtCore import pyqtSignal
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 import numpy as np
 import logging
 import matplotlib
 import parameters
+import onenet
+import time
 
 matplotlib.use("Qt5Agg")  # 声明使用QT5
 
@@ -30,17 +33,23 @@ logger.setLevel(logging.DEBUG)
 
 class NormalView(QWidget):
 
-    emotionRadioButtons = list()
+    signal = pyqtSignal()
     noticeColors = ['lime', 'green']
     featuresColors = ['blue', 'lightblue', 'lightgreen',
                       'green', 'red', 'brown', 'lime', 'purple']
 
-    def __init__(self, parent=None, canvasParent=None, width=11, height=5, dpi=100):
+    def __init__(self, parent=None, canvasParent=None, id=None, width=11, height=5, dpi=100):
         # 创建一个Figure，注意：该Figure为matplotlib下的figure，不是matplotlib.pyplot下面的figure
         super().__init__()
         self.parent = parent
+        self.id = id
+        self.emotionRadioButtons = list()
+        self.emotionProgressBars = list()
+        self.emotion = [0, 0, 0, 0]
+        self.lastTick = 0
         self.fig = Figure(figsize=(width, height), dpi=dpi)
         # self.fig = Figure()
+        self.signal.connect(slot=self.signalSlot)
 
         self.canvas = FigureCanvas(self.fig)
         FigureCanvas.__init__(self.canvas, self.fig)  # 初始化父类
@@ -62,22 +71,36 @@ class NormalView(QWidget):
         emotionResultGroupBox.setLayout(self.emotionResultLayout)
         for index, emotion in enumerate(parameters.strEmotionList):
             radioButton = QRadioButton(emotion)
+            progressBar = QProgressBar()
             self.emotionRadioButtons.append(radioButton)
+            self.emotionProgressBars.append(progressBar)
+            progressBar.setFormat("%v")
             self.emotionResultLayout.addWidget(
-                radioButton, index // 2, index % 2 + 1)
+                radioButton, index // 2, index % 2 * 2 + 1)
+            self.emotionResultLayout.addWidget(
+                progressBar, index // 2, index % 2 * 2 + 2)
             radioButton.toggled.connect(self.radioButtonToggled)
 
         self.image = QLabel()
         self.emotionResultLayout.addWidget(self.image, 0, 0, 2, 1)
 
+        self.resultText = QTextEdit()
+        self.resultText.setReadOnly(True)
+        self.emotionResultLayout.addWidget(self.resultText, 0, 5, 2, 2)
+
         self.viewLayout = QVBoxLayout()
         self.viewLayout.addWidget(graphicsView, 3)
-        self.viewLayout.addWidget(emotionResultGroupBox, 1)
+        self.viewLayout.addWidget(emotionResultGroupBox, 2)
 
         self.setLayout(self.viewLayout)
 
         self.initPlotTitle()
         self.canvas.draw()
+        # onenet service
+        self.onenet = onenet.onenet(self.id, "tgam_pack")
+
+    def target(self):
+        return self.onenet.get_current_onenet()
 
     def initPlotTitle(self):
         self.noticeAxes.clear()
@@ -103,10 +126,18 @@ class NormalView(QWidget):
             if button.isChecked() == True:
                 self.image.setPixmap(
                     QPixmap("./assets/%s.png" % button.text()))
+    def signalSlot(self):
+        for index, progressBar in enumerate(self.emotionProgressBars):
+            progressBar.setValue(self.emotion[index] * 100)
 
     def update(self, pack):
         if pack["type"] != "TGAM":
             logger.warning("Unknown Pack Type.")
+            return -1
+        try:
+            if pack["tick"] == self.lastTick:
+                return 0
+        except:
             return -1
         try:
             self.delta = pack['pack_data']['detal']
@@ -131,7 +162,19 @@ class NormalView(QWidget):
         ind = np.arange(len(self.bar_notice_labels))
         self.noticeAxes.bar(ind, self.bar_notice_data, color=self.noticeColors)
         ind = np.arange(len(self.bar_features_labels))
-        self.featuresAxes.bar(ind, self.bar_wave_data,
+        self.featuresAxes.bar(ind, self.bar_feature_data,
                               color=self.featuresColors)
+
+        self.canvas.draw()
+        self.lastTick = pack["tick"]
+
+        tmp = np.array(self.bar_feature_data + self.bar_notice_data)
+        tmp = tmp.reshape((1, 10))
+        self.emotion = self.parent.nn.predict_p(tmp)
+        index = np.where(self.emotion == self.emotion.max())
+        print(index)
+        print(self.emotion)
+        self.emotionRadioButtons[index[0][0]].setChecked(True)
+        self.signal.emit()
 
         return 0

@@ -164,7 +164,8 @@ class ConfigTabsWidget(QTabWidget):
 
 class MainWindow(QMainWindow):
     skin = 1
-    __isConfigTabsShow = False
+    isConfigTabsShow = False
+    isServiceStart = False
 
     def __init__(self, app):
         super().__init__()
@@ -231,12 +232,18 @@ class MainWindow(QMainWindow):
         self.menuBarLayout.addStretch()
 
     def onOnenetStartButtonPushed(self):
+        title = self.configTabs.onenetDeviceIdComboBox.currentText()
+        if hasattr(self, "nn") is not True:
+            return
+        if self.nn.isReady() is not True:
+            return
         if self.configTabs.onenetModeCheckBox.isChecked() == True:
-            self.viewTabs.addTab(
-                AdvanceView(self), self.configTabs.onenetDeviceIdComboBox.currentText())
+            index = self.viewTabs.addTab(
+                AdvanceView(self, id=title), title)
         else:
-            self.viewTabs.addTab(
-                NormalView(self), self.configTabs.onenetDeviceIdComboBox.currentText())
+            index = self.viewTabs.addTab(
+                NormalView(self, id=title), title)
+        self.viewTabs.setCurrentIndex(index)
 
     def onCloseRequested(self, index):
         self.viewTabs.removeTab(index)
@@ -258,22 +265,56 @@ class MainWindow(QMainWindow):
         qr.moveCenter(cp)
         self.move(qr.topLeft())
 
-    def initViewLayout(self):
-        pass
-
     def initTools(self):
-        pass
+        self.startBackgroundInit()
+        self.startBackgroundServices()
+
+    def startBackgroundInit(self):
+        # 初始化
+        task = threading.Thread(target=self.initNNThread)
+        task.setDaemon(True)
+        task.start()
+
+    def startBackgroundServices(self):
+        # 后台更新服务
+        self.isServiceStart = True
+        task = threading.Thread(target=self.backgroundNetworkService)
+        task.setDaemon(True)
+        task.start()
+
+    def initNNThread(self):
+        from NN import NN
+        # 必须导入，原始数据
+        self.trainx = np.load('./NN/TGAM/TGAM_trainx.npy')
+        self.trainy = np.load('./NN/TGAM/TGAM_trainy.npy') - 1  # 标签从零开始
+        self.testx = np.load('./NN/TGAM/TGAM_testx.npy')
+        self.testy = np.load('./NN/TGAM/TGAM_testy.npy') - 1
+        # 初始模型训练 导入原始数据
+        self.nn = NN(self.trainx, self.trainy, self.testx, self.testy)
+
+    # 后台网络服务程序 定时更新
+    def backgroundNetworkService(self):
+        logger.debug("Network update thread start.")
+        while self.isServiceStart == True:
+            currentWidget = self.viewTabs.currentWidget()
+            if currentWidget is not None:
+                pack = currentWidget.target()
+                if pack != None:
+                    currentWidget.update(pack)
+            time.sleep(0.5)
+
+        logger.debug("Network update thread exit.")
 
     def initEvents(self):
         self.skinButton.clicked.connect(self.skinChange)
         self.settingsButton.clicked.connect(self.settingsButtonPush)
 
     def settingsButtonPush(self):
-        if self.__isConfigTabsShow == True:
-            self.__isConfigTabsShow = False
+        if self.isConfigTabsShow == True:
+            self.isConfigTabsShow = False
             self.configTabs.hide()
         else:
-            self.__isConfigTabsShow = True
+            self.isConfigTabsShow = True
             self.configTabs.show()
 
     def skinChange(self):
