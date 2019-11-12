@@ -8,10 +8,10 @@
 # ==============================
 
 # %%
-from TgamPlot import MyPlot
 from Combobox import ComboBox
 import parameters
 import onenet
+from ConfigWidget import ConfigTabsWidget
 from NormalView import NormalView
 from AdvanceView import AdvanceView
 # from NN import NN
@@ -36,130 +36,6 @@ logging.basicConfig(level=logging.INFO,
                     format="[%(filename)s:%(lineno)s]-%(funcName)20s()]:%(message)s")
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
-
-
-# %%
-
-
-class ConfigTabsWidget(QTabWidget):
-    """docstring for ConfigTabsWidget."""
-
-    def __init__(self, parent=None):
-        super(ConfigTabsWidget, self).__init__()
-        self.parent = parent
-
-        self.setAutoFillBackground(True)
-        self.onenetTab = QWidget()
-        self.networkTab = QWidget()
-        self.emotionTab = QWidget()
-
-        self.addTab(self.onenetTab, "OneNET")
-        self.addTab(self.networkTab, "NetWork")
-        self.addTab(self.emotionTab, "Emotion")
-
-        self.initOnenetTab()
-        self.initOnenetTabEvents()
-
-        self.initNetworkTab()
-        self.initEmotionTab()
-
-        self.hide()
-
-    def initOnenetTab(self):
-        onenetTabLayout = QVBoxLayout()
-        self.onenetTab.setLayout(onenetTabLayout)
-
-        onenetConfigLayout = QGridLayout()
-        onenetGroupBox = QGroupBox(parameters.strOnenetGroupBox)
-        onenetGroupBox.setLayout(onenetConfigLayout)
-
-        onenetDeviceIdLabel = QLabel(parameters.strOneNETDeviceId)
-        self.onenetDeviceIdComboBox = ComboBox()
-        for info in onenet.info:
-            self.onenetDeviceIdComboBox.addItem(info["id"])
-        self.onenetStartButton = QPushButton(parameters.strStart)
-        self.onenetModeCheckBox = QCheckBox(parameters.strAdvance)
-
-        onenetConfigLayout.addWidget(onenetDeviceIdLabel, 0, 0)
-        onenetConfigLayout.addWidget(self.onenetDeviceIdComboBox, 0, 1, 1, 2)
-        onenetConfigLayout.addWidget(self.onenetModeCheckBox, 1, 0, 1, 3)
-        onenetConfigLayout.addWidget(self.onenetStartButton, 2, 0, 1, 3)
-
-        onenetTabLayout.addWidget(onenetGroupBox)
-        onenetTabLayout.addStretch(1)
-
-    def initOnenetTabEvents(self):
-        self.onenetStartButton.clicked.connect(
-            self.parent.onOnenetStartButtonPushed)
-
-    def initNetworkTab(self):
-        networkTabLayout = QVBoxLayout()
-        self.networkTab.setLayout(networkTabLayout)
-
-        networkConfigLayout = QGridLayout()
-        networkGroupBox = QGroupBox(parameters.strNetworkGroupBox)
-        networkGroupBox.setLayout(networkConfigLayout)
-
-        self.networkModeComboBox = ComboBox()
-        self.networkModeComboBox.addItem("TCP Server")
-        self.networkModeComboBox.addItem("UDP Server")
-        addressLabel = QLabel(parameters.strDefaultAddress)
-        self.networkAddressLineEdit = QLineEdit()
-        self.networkAddressLineEdit.setText(self.get_host_ip())
-        portLabel = QLabel(parameters.strPort)
-        self.networkPortLineEdit = QLineEdit()
-        self.networkPortLineEdit.setText(parameters.strDefaultPort)
-        self.networkStartButton = QPushButton(parameters.strStart)
-
-        networkConfigLayout.addWidget(self.networkModeComboBox, 0, 0, 1, 3)
-        networkConfigLayout.addWidget(addressLabel, 1, 0)
-        networkConfigLayout.addWidget(self.networkAddressLineEdit, 1, 1, 1, 2)
-        networkConfigLayout.addWidget(portLabel, 2, 0)
-        networkConfigLayout.addWidget(self.networkPortLineEdit, 2, 1, 1, 2)
-        networkConfigLayout.addWidget(self.networkStartButton, 3, 0, 1, 3)
-
-        networkTabLayout.addWidget(networkGroupBox)
-        networkTabLayout.addStretch(1)
-
-    def initEmotionTab(self):
-        emotionTabLayout = QVBoxLayout()
-        self.emotionTab.setLayout(emotionTabLayout)
-
-        emotionConfigLayout = QGridLayout()
-        emotionGroupBox = QGroupBox(parameters.strEmotionGroupBox)
-        emotionGroupBox.setLayout(emotionConfigLayout)
-
-        self.happyRadioButton = QRadioButton(parameters.strEmotionHappy)
-        self.sadRadioButton = QRadioButton(parameters.strEmotionSad)
-        self.angryRadioButton = QRadioButton(parameters.strEmotionAngry)
-        self.scareRadioButton = QRadioButton(parameters.strEmotionScare)
-
-        self.emotionStartButton = QPushButton(parameters.strStart)
-
-        emotionConfigLayout.addWidget(self.happyRadioButton, 0, 0)
-        emotionConfigLayout.addWidget(self.sadRadioButton, 0, 1)
-        emotionConfigLayout.addWidget(self.angryRadioButton, 1, 0)
-        emotionConfigLayout.addWidget(self.scareRadioButton, 1, 1)
-        emotionConfigLayout.addWidget(self.emotionStartButton, 2, 0, 1, 2)
-
-        emotionTabLayout.addWidget(emotionGroupBox)
-        emotionTabLayout.addStretch(1)
-
-    # get ip
-    def get_host_ip(self):
-        try:
-            s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-            s.connect(('8.8.8.8', 80))
-            ip = s.getsockname()[0]
-        except Exception as e:
-            logger.warning(e)
-            ip = parameters.strDefaultAddress
-        finally:
-            s.close()
-
-        return ip
-
-# %%
 
 
 class MainWindow(QMainWindow):
@@ -301,7 +177,7 @@ class MainWindow(QMainWindow):
                 pack = currentWidget.target()
                 if pack != None:
                     currentWidget.update(pack)
-            time.sleep(0.5)
+            time.sleep(0.3)
 
         logger.debug("Network update thread exit.")
 

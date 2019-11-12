@@ -18,6 +18,7 @@ from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 import numpy as np
 import logging
 import matplotlib
+import matplotlib.pyplot as plt
 import parameters
 import onenet
 import time
@@ -30,6 +31,9 @@ logging.basicConfig(level=logging.INFO,
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
+plt.rcParams['font.sans-serif'] = ['SimHei']  # 防止中文标签乱码，还有通过导入字体文件的方法
+plt.rcParams['axes.unicode_minus'] = False
+
 
 class NormalView(QWidget):
 
@@ -37,6 +41,8 @@ class NormalView(QWidget):
     noticeColors = ['lime', 'green']
     featuresColors = ['blue', 'lightblue', 'lightgreen',
                       'green', 'red', 'brown', 'lime', 'purple']
+    enableFinetune = False
+    finetuneEmotion = 0
 
     def __init__(self, parent=None, canvasParent=None, id=None, width=11, height=5, dpi=100):
         # 创建一个Figure，注意：该Figure为matplotlib下的figure，不是matplotlib.pyplot下面的figure
@@ -47,6 +53,8 @@ class NormalView(QWidget):
         self.emotionProgressBars = list()
         self.emotion = [0, 0, 0, 0]
         self.lastTick = 0
+        self.count = 0
+        self.ad59Flag = False
         self.fig = Figure(figsize=(width, height), dpi=dpi)
         # self.fig = Figure()
         self.signal.connect(slot=self.signalSlot)
@@ -86,6 +94,7 @@ class NormalView(QWidget):
 
         self.resultText = QTextEdit()
         self.resultText.setReadOnly(True)
+        self.resultText.setText("正常人体双臂间阻抗范围：500~1kΩ")
         self.emotionResultLayout.addWidget(self.resultText, 0, 5, 2, 2)
 
         self.viewLayout = QVBoxLayout()
@@ -98,8 +107,12 @@ class NormalView(QWidget):
         self.canvas.draw()
         # onenet service
         self.onenet = onenet.onenet(self.id, "tgam_pack")
+        self.ad59 = onenet.onenet(self.id, "ad59_pack")
 
     def target(self):
+        self.count = self.count + 1
+        if self.count % 4 == 0:
+            return self.ad59.get_current_onenet()
         return self.onenet.get_current_onenet()
 
     def initPlotTitle(self):
@@ -126,11 +139,21 @@ class NormalView(QWidget):
             if button.isChecked() == True:
                 self.image.setPixmap(
                     QPixmap("./assets/%s.png" % button.text()))
+
     def signalSlot(self):
         for index, progressBar in enumerate(self.emotionProgressBars):
             progressBar.setValue(self.emotion[index] * 100)
+        if self.ad59Flag == True:
+            self.ad59Flag = False
+            self.resultText.setText("正常人体双臂间阻抗范围：500~1kΩ")
+            self.resultText.append("\n测得阻抗 %f Ω" % self.resistance)
 
     def update(self, pack):
+        if pack["type"] == "AD5933":
+            self.resistance = pack["ave"] / 100
+            self.ad59Flag = True
+            self.signal.emit()
+            return 0
         if pack["type"] != "TGAM":
             logger.warning("Unknown Pack Type.")
             return -1
@@ -176,5 +199,10 @@ class NormalView(QWidget):
         print(self.emotion)
         self.emotionRadioButtons[index[0][0]].setChecked(True)
         self.signal.emit()
+
+        if self.enableFinetune == True:
+            print(self.finetuneEmotion)
+            self.parent.nn.finetune(tmp, np.array(
+                self.finetuneEmotion).reshape((1, 1)))
 
         return 0

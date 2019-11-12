@@ -40,6 +40,8 @@ logging.basicConfig(level=logging.INFO,
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
+plt.rcParams['font.sans-serif'] = ['SimHei']  # 防止中文标签乱码，还有通过导入字体文件的方法
+plt.rcParams['axes.unicode_minus'] = False
 
 class AdvanceView(QWidget):
     """docstring for AdvanceView."""
@@ -59,7 +61,7 @@ class AdvanceView(QWidget):
     fft3dAx_x = np.linspace(sampling_time_begin, sampling_time_end,
                             Sampling_point)
 
-    def __init__(self, parent=None, canvasParent=None, id=None, width=12, height=10, dpi=100):
+    def __init__(self, parent=None, canvasParent=None, id=None, width=14, height=12, dpi=100):
         # 创建一个Figure，注意：该Figure为matplotlib下的figure，不是matplotlib.pyplot下面的figure
         super().__init__()
         self.parent = parent
